@@ -11,10 +11,10 @@ class SAMImageEncodeWrapper(nn.Module):
         self.sam_img_encoder = ori_sam.image_encoder
         if fix:
             for name, param in self.sam_img_encoder.named_parameters():
-                param.requires_grad = False
+                param.requires_grad = False  # FREEZE ALL ENCODER PARAMETERS
 
     def forward(self, x):
-        x = self.sam_img_encoder(x)
+        x = self.sam_img_encoder(x)  # GET ENCODED IMAGE
         return x
 
 
@@ -44,7 +44,7 @@ class CATSAMTImageEncoder(SAMImageEncodeWrapper):
         self.hq_token = hq_token
 
         total_p_layer = len(self.sam_img_encoder.blocks)
-        prompt_dim = self.sam_img_encoder.pos_embed.shape[-1]
+        prompt_dim = self.sam_img_encoder.pos_embed.shape[-1]  # SIZE OF POSITIONAL EMBEDDINGS
         self.hq_token_proj = nn.Sequential(
             *[Adapter(hq_token.size(-1), prompt_dim, mlp_ratio=0.25) for _ in range(total_p_layer)]
         )

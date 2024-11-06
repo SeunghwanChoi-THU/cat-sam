@@ -71,16 +71,19 @@ class BaseCATSAM(nn.Module):
             imgs, point_coords, box_coords = self.preprocess(
                 imgs=imgs, point_coords=point_coords, box_coords=box_coords, ori_img_size=ori_img_size)
             # imgs here is normalized with the shape of (B, 3, 1024, 1024)
+            # CREATE IMAGE_EMBEDDINGS USING IMAGE_ENCODER
             image_embeddings, interm_embeddings = self.image_encoder(imgs)
         elif ori_img_size is None:
             raise RuntimeError("Please also specify ori_img_size to forward() during the inference!")
 
+        # ELSE: (image_embeddings, interm_embeddings, ori_img_size exist.)
         batch_size = len(image_embeddings)
         points, boxes, masks = self.convert_raw_prompts_to_triple(
             point_coords=point_coords, point_labels=point_labels,
             box_coords=box_coords, noisy_masks=noisy_masks, batch_size=batch_size
         )
 
+        # ENCODE PROMPT INFOS USING PROMPT_ENCODER
         sparse_embeddings_list, dense_embeddings_list = [], []
         for batch_idx in range(batch_size):
             sparse_embeddings, dense_embeddings = self.prompt_encoder(
@@ -89,6 +92,7 @@ class BaseCATSAM(nn.Module):
             sparse_embeddings_list.append(sparse_embeddings)
             dense_embeddings_list.append(dense_embeddings)
 
+        # CREATE MASKS USING MASK_DECODER
         masks_sam, masks_hq = self.mask_decoder(
             image_embeddings=image_embeddings,
             image_pe=[self.prompt_encoder.get_dense_pe() for _ in range(batch_size)],
@@ -120,9 +124,9 @@ class BaseCATSAM(nn.Module):
             raise RuntimeError
 
         for i in range(len(img)):
-            if len(img[i].shape) == 2:
+            if len(img[i].shape) == 2:  # CONVERT GRAYSCALE 2D(H,W) INTO 3D(1,H,W)
                 img[i] = img[i].unsqueeze(0)
-            if len(img[i].shape) == 3 and img[i].size(0) == 1:
+            if len(img[i].shape) == 3 and img[i].size(0) == 1: # CONVERT GRAYSCALE 3D(1,H,W) INTO 3-CHANNEL GRAYSCALE(3,H,W)
                 img[i] = img[i].repeat(3, 1, 1)
             if len(img[i].shape) != 3 or img[i].size(0) != 3:
                 raise RuntimeError(
@@ -133,11 +137,13 @@ class BaseCATSAM(nn.Module):
         self.ori_infer_img_size = [(img[i].shape[-2], img[i].shape[-1]) for i in range(len(img))]
         self.ori_infer_img = img
 
+        # SAVE IMAGE FEATURES FOR METHOD 'infer'
         img, _, _ = self.preprocess(imgs=img, ori_img_size=self.ori_infer_img_size)
         self.img_features, self.interm_features = self.image_encoder(img)
         return img
 
 
+    # CREATE PREDICTION MASK USING FEATURES MADE BY 'set_infer_img()'
     @torch.no_grad()
     def infer(
             self,

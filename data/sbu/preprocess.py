@@ -3,6 +3,14 @@ from os.path import curdir, join, exists
 from cat_sam.datasets.misc import get_json_dict_from_dir
 
 
+# modify (to "python -m data.sbu.preprocess" at "/cat_sam")
+import os
+base_dir = os.path.dirname(__file__)
+print(base_dir)
+print(curdir)
+curdir = base_dir
+# end
+
 if __name__ == '__main__':
     test_data_dir = join(curdir, 'SBU-shadow', 'SBU-Test')
     train_data_dir = join(curdir, 'SBU-shadow', 'SBUTrain4KRecoveredSmall')
